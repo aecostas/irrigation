@@ -1,9 +1,17 @@
-const byte IRRIGATION = 0;
-const byte SLEEP = 1;
+#define DEBUG
+
+#ifdef DEBUG
+ #define DEBUG_PRINT(x)     Serial.print (x)
+ #define DEBUG_PRINTDEC(x)     Serial.print (x, DEC)
+ #define DEBUG_PRINTLN(x)  Serial.println (x)
+#else
+ #define DEBUG_PRINT(x)
+ #define DEBUG_PRINTDEC(x)
+ #define DEBUG_PRINTLN(x) 
+#endif
 
 const byte pumpPin = 13;    // substitute by peristaltic bump pin
 const byte buttonPin = 2;
-byte button_status = HIGH;
 
 const int irrigationTime = 3000;
 const int holdTime = 1500;
@@ -26,7 +34,9 @@ byte state = STATUS_SLEEP;
 byte action = ACTION_NONE;
 
 void setup() {
+  #ifdef DEBUG
   Serial.begin(9600);
+  #endif
   pinMode(pumpPin, OUTPUT);
   pinMode(buttonPin, INPUT_PULLUP);
   digitalWrite(pumpPin, LOW);
@@ -50,14 +60,8 @@ void end_irrigation(byte pin) {
    last_irrigation_time = millis();
 }
 
-void reset_button() {
-   button_status = HIGH;  
-}
-
 void handler_buttonPin_change() {
-    button_status = digitalRead(buttonPin);
-
-    if (button_status == LOW) {
+    if (digitalRead(buttonPin) == LOW) {
        action = ACTION_BUTTON_PRESS;
        buttonFalling = millis(); 
     } else {
@@ -70,11 +74,9 @@ void loop() {
   // TODO: hacer diagrama de estado incluyendo el estado
   // pulsado el boton de regado
 
-  // irrigate after pressing the button
-  // or on timeout from last irrigation
   switch (state) {
     case STATUS_SLEEP:
-         Serial.println("STATUS_SLEEP");
+         DEBUG_PRINTLN("STATUS_SLEEP");
 
          if (action == ACTION_BUTTON_PRESS) {
              action = ACTION_NONE;
@@ -88,7 +90,7 @@ void loop() {
        break;
 
     case STATUS_IRRIGATING:
-         Serial.println("STATUS_IRRIGATING");
+         DEBUG_PRINTLN("STATUS_IRRIGATING");
 
          if ((now - start_irrigation_time) >= irrigationTime) {
             end_irrigation(pumpPin);
@@ -97,7 +99,7 @@ void loop() {
        break;
 
     case STATUS_IRRIGATING_MANUAL:
-       Serial.println("STATUS_IRRIGATING_MANUAL");
+       DEBUG_PRINTLN("STATUS_IRRIGATING_MANUAL");
        if (action == ACTION_BUTTON_RELEASE) {
          action = ACTION_NONE;
          end_irrigation(pumpPin);
@@ -106,14 +108,14 @@ void loop() {
        break;
 
     case STATUS_HOLD:
-       Serial.println("STATUS_HOLD");
+       DEBUG_PRINTLN("STATUS_HOLD");
        if (action == ACTION_BUTTON_RELEASE) {
              action = ACTION_NONE;
              start_irrigation(pumpPin);
              state = STATUS_IRRIGATING;
        } 
        else if ((now - buttonFalling) >= holdTime) {
-           Serial.println("starting irrigation from hold");
+           DEBUG_PRINTLN("starting irrigation from hold");
            start_irrigation(pumpPin);
            state = STATUS_IRRIGATING_MANUAL;
        }
